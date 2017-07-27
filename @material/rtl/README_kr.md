@@ -25,7 +25,7 @@ npm install --save @material/rtl
 
 간단히 `@import "@material/rtl/mixins";` 하고 믹스인을 사용하라, 각 믹스인 설명은 아래에 있다.
 
-### mdc-rtl
+### [mixin] mdc-rtl
 
 ```scss
 @mixin mdc-rtl($root-selector: null)
@@ -126,7 +126,7 @@ css 컴파일:
 
 불행히도, 우리는 이것이 지금 우리가 할 수있는 최선이라는 것을 발견했다. 앞으로는 : [:dir](http://mdn.io/:dir) 같은 선택자가 이 문제를 완화하는 데 도움이 될 것이다.
 
-### mdc-rtl-reflexive-box
+### [mixin] mdc-rtl-reflexive-box
 
 ```scss
 @mixin mdc-rtl-reflexive-box($base-property, $default-direction, $value, $root-selector: null)
@@ -196,7 +196,18 @@ For example:
   }
 }
 ```
+css 컴파일 : 
+```css
+.mdc-foo {
+  margin-left: 8px;
+  margin-right: 0;
+}
 
+[dir="rtl"] .mdc-foo, .mdc-foo[dir="rtl"] {
+  margin-left: 0;
+  margin-right: 8px;
+}
+```
 `mdc-rtl`에 전달 될 4번째 선택적인 인자(`$root-selector`)를 전달할 수도 있다.
 
 e.g. `@include mdc-rtl-reflexive-box-property(margin, left, 8px, ".mdc-component")`.
@@ -204,7 +215,7 @@ e.g. `@include mdc-rtl-reflexive-box-property(margin, left, 8px, ".mdc-component
 이 함수는 항상 RTL context의 원래 값을 0으로 만든다.  
 값을 뒤집으려면 `mdc-rtl-reflexive-property`를 사용하라.
 
-### mdc-rtl-reflexive-property
+### [mixin] mdc-rtl-reflexive-property
 
 ```scss
 @mixin mdc-rtl-reflexive-property($base-property, $left-value, $right-value, $root-selector: null)
@@ -241,19 +252,50 @@ For example:
   }
 }
 ```
+css 컴파일 : 
+```css
+.mdc-foo {
+  margin-left: auto;
+  margin-right: 12px;
+}
 
+[dir="rtl"] .mdc-foo, .mdc-foo[dir="rtl"] {
+  margin-left: 12px;
+  margin-right: auto;
+}
+```
 A 4th optional $root-selector argument can be given, which will be passed to `mdc-rtl`.
 
-### mdc-rtl-reflexive-position
+### [mixin] mdc-rtl-reflexive-position
 
 ```scss
 @mixin mdc-rtl-reflexive-position($pos, $value, $root-selector: null)
 ```
 
-Takes an argument specifying a horizontal position property (either "left" or "right") as well
-as a value, and applies that value to the specified position in a LTR context, and flips it in a
-RTL context.
+값(`$pos`)뿐만 아니라 수평 위치 속성(`left` 또는 `right`)을 지정하는 인수를 취해
+LTR 컨텍스트의 지정된 위치에 값을 적용하고 RTL 컨텍스트에서는 방향을 전환한다.
 
+```scss
+// $pos(right / left)
+@mixin mdc-rtl-reflexive-position($pos, $value, $root-selector: null) {
+  // $pos의 값이 right, left 중에 없으면 에러를 출력
+  @if (index((right, left), $pos) == null) {
+    @error "Invalid position #{pos}. Please specifiy either right or left";
+  }
+
+  // $left-value에 값을 담음
+  $left-value: $value;
+  $right-value: initial;
+
+  // pos의 값이 right일 경우 $right-value에 값을 담음
+  @if ($pos == right) {
+    $right-value: $value;
+    $left-value: initial;
+  }
+
+  @include mdc-rtl-reflexive_(left, $left-value, right, $right-value, $root-selector);
+}
+```
 For example:
 
 ```scss
@@ -262,7 +304,7 @@ For example:
   position: absolute;
 }
 ```
-is equivalent to:
+다음과 같다:
 
 ```scss
  .mdc-foo {
@@ -276,5 +318,64 @@ is equivalent to:
    }
  }
 ```
+css 컴파일 : 
+```css
+.mdc-foo {
+  left: 0;
+  right: initial;
+  position: absolute;
+}
 
-An optional third `$root-selector` argument may also be given, which is passed to `mdc-rtl`.
+[dir="rtl"] .mdc-foo, .mdc-foo[dir="rtl"] {
+  left: initial;
+  right: 0;
+}
+```
+선택적으로 세번째 인자인 `$root-selector` 를 `mdc-rtl`에 전달할 수 있다.
+
+### [mixin] mdc-rtl-reflexive_
+
+**mdc-rtl-reflexive-property** 믹스인 사용 시에 각 left, right 값을  
+`$left-property`(#{$base-property}-left), `$right-property`(#{$base-property}-right)의 값으로 담음  
+(예. margin-left, margin-right)
+
+```scss
+@mixin mdc-rtl-reflexive_(
+  $left-property,
+  $left-value,
+  $right-property,
+  $right-value,
+  $root-selector: null
+) {
+  #{$left-property}: $left-value;
+  #{$right-property}: $right-value;
+
+  @include mdc-rtl($root-selector) {
+    #{$left-property}: $right-value;
+    #{$right-property}: $left-value;
+  }
+}
+```
+
+***
+
++ [@at-root](http://sass-lang.com/documentation/file.SASS_REFERENCE.html#at-root):  
+부모 선택자 아래에 중첩되는 것이 아니라 문서의 최상위 루트에 중첩된 규칙 모음을 내보낸다.
+```scss
+.parent {
+  content: 'parent';
+  @at-root .child {
+    content: 'child';
+  }
+}
+```
+```css
+/* css 컴파일 */
+.parent {
+  content: 'parent';
+}
+.child {
+  content: 'child';
+}
+```
++ [dir](https://developer.mozilla.org/ko/docs/Web/HTML/Global_attributes/dir)
